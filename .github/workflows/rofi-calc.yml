@@ -1,0 +1,58 @@
+name: Build and Upload rofi-calc Binary
+
+# Trigger on pushes or PRs to main (adjust branch name if needed)
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout the repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # 2. Install build dependencies
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            autoconf \
+            automake \
+            libtool \
+            libtool-bin \
+            pkg-config \
+            rofi-dev \
+            qalc
+
+      # 3. Generate autotools files
+      - name: Generate autotools files
+        run: |
+          mkdir -p m4
+          autoreconf -i
+
+      # 4. Configure in a separate build directory
+      - name: Configure
+        run: |
+          mkdir -p build
+          cd build
+          ../configure
+
+      # 5. Compile with all available cores
+      - name: Build
+        run: |
+          cd build
+          make -j$(nproc)
+
+      # 6. Upload the compiled binary as an artifact
+      - name: Upload compiled binary
+        uses: actions/upload-artifact@v3
+        with:
+          name: rofi-calc-binary
+          path: build/rofi-calc
