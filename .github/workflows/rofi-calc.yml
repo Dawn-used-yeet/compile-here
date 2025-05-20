@@ -14,10 +14,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Check out the repository (use v4 to avoid older dependencies)
+      # 1. Check out the repository (ensures we have configure.ac at root)
       - name: Checkout repository
         uses: actions/checkout@v4
-        # Using v4 ensures no transitive dependency on upload-artifact@v3 :contentReference[oaicite:1]{index=1}
+        # Using v4 ensures no transitive dependency on older artifact actions 
 
       # 2. Install build dependencies
       - name: Install dependencies
@@ -31,12 +31,14 @@ jobs:
             pkg-config \
             rofi-dev \
             qalc
+        # This matches instructions: Ubuntu: apt install rofi-dev qalc libtool plus autotools :contentReference[oaicite:8]{index=8}
 
-      # 3. Generate autotools files (autoreconf -i)
+      # 3. Generate autotools files (must split into separate commands)
       - name: Generate autotools files
         run: |
           mkdir -p m4
           autoreconf -i
+        # Splitting commands ensures that 'autoreconf' sees configure.ac :contentReference[oaicite:9]{index=9}
 
       # 4. Configure in a separate build directory
       - name: Configure
@@ -44,17 +46,19 @@ jobs:
           mkdir -p build
           cd build
           ../configure
+        # Creates out-of-tree build dir so Makefiles and artifacts stay isolated :contentReference[oaicite:10]{index=10}
 
-      # 5. Compile using all available CPU cores
+      # 5. Compile with all available CPU cores
       - name: Build
         run: |
           cd build
           make -j$(nproc)
+        # After this, 'build/rofi-calc' is the compiled plugin :contentReference[oaicite:11]{index=11}
 
-      # 6. Upload the compiled binary as an artifact (v4)
+      # 6. Upload the compiled binary as an artifact (use v4)
       - name: Upload compiled binary
         uses: actions/upload-artifact@v4
         with:
           name: rofi-calc-binary
           path: build/rofi-calc
-          # v4 improves upload speed and is the only supported version as of Jan 30 2025 :contentReference[oaicite:2]{index=2}
+        # Uploading the file allows you to download it from the run’s Artifacts tab 
