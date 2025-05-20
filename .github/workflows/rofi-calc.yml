@@ -1,4 +1,4 @@
-# .github/workflows/build.yml
+# .github/workflows/build-and-upload.yml
 name: Build and Upload rofi-calc Binary
 
 on:
@@ -14,9 +14,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Check out the repo
+      # 1. Check out the repository (use v4 to avoid older dependencies)
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        # Using v4 ensures no transitive dependency on upload-artifact@v3 :contentReference[oaicite:1]{index=1}
 
       # 2. Install build dependencies
       - name: Install dependencies
@@ -31,7 +32,7 @@ jobs:
             rofi-dev \
             qalc
 
-      # 3. Run `autoreconf -i` to generate configure scripts
+      # 3. Generate autotools files (autoreconf -i)
       - name: Generate autotools files
         run: |
           mkdir -p m4
@@ -44,15 +45,16 @@ jobs:
           cd build
           ../configure
 
-      # 5. Compile with all available CPU cores
+      # 5. Compile using all available CPU cores
       - name: Build
         run: |
           cd build
           make -j$(nproc)
 
-      # 6. Upload the compiled binary as an artifact
+      # 6. Upload the compiled binary as an artifact (v4)
       - name: Upload compiled binary
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: rofi-calc-binary
           path: build/rofi-calc
+          # v4 improves upload speed and is the only supported version as of Jan 30 2025 :contentReference[oaicite:2]{index=2}
