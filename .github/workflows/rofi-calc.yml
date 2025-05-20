@@ -1,4 +1,3 @@
-# .github/workflows/build-and-upload.yml
 name: Build and Upload rofi-calc Binary
 
 on:
@@ -14,12 +13,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Check out the repository (ensures we have configure.ac at root)
+      # 1. Check out the workflow-only repo (which has no rofi-calc source)
       - name: Checkout repository
         uses: actions/checkout@v4
-        # Using v4 ensures no transitive dependency on older artifact actions 
 
-      # 2. Install build dependencies
+      # 2. Clone the official rofi-calc repository into 'rofi-calc-src/'
+      - name: Clone rofi-calc upstream
+        run: |
+          git clone --depth 1 https://github.com/svenstaro/rofi-calc.git rofi-calc-src
+        # --depth 1 fetches only the latest commit, speeding up the clone
+
+      # 3. Install build dependencies
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -31,34 +35,29 @@ jobs:
             pkg-config \
             rofi-dev \
             qalc
-        # This matches instructions: Ubuntu: apt install rofi-dev qalc libtool plus autotools :contentReference[oaicite:8]{index=8}
+        # Installs autotools, rofi headers (rofi-dev), and qalc
 
-      # 3. Generate autotools files (must split into separate commands)
+      # 4. Generate autotools files inside the cloned source
       - name: Generate autotools files
+        working-directory: rofi-calc-src
         run: |
           mkdir -p m4
           autoreconf -i
-        # Splitting commands ensures that 'autoreconf' sees configure.ac :contentReference[oaicite:9]{index=9}
+        # By specifying working-directory, we ensure configure.ac is found
 
-      # 4. Configure in a separate build directory
-      - name: Configure
+      # 5. Configure & build inside 'rofi-calc-src/build'
+      - name: Configure & Build
+        working-directory: rofi-calc-src
         run: |
           mkdir -p build
           cd build
           ../configure
-        # Creates out-of-tree build dir so Makefiles and artifacts stay isolated :contentReference[oaicite:10]{index=10}
-
-      # 5. Compile with all available CPU cores
-      - name: Build
-        run: |
-          cd build
           make -j$(nproc)
-        # After this, 'build/rofi-calc' is the compiled plugin :contentReference[oaicite:11]{index=11}
 
-      # 6. Upload the compiled binary as an artifact (use v4)
+      # 6. Upload the compiled rofi-calc binary
       - name: Upload compiled binary
         uses: actions/upload-artifact@v4
         with:
           name: rofi-calc-binary
-          path: build/rofi-calc
-        # Uploading the file allows you to download it from the run’s Artifacts tab 
+          path: rofi-calc-src/build/rofi-calc
+        # The path points to the compiled binary inside the cloned directory
